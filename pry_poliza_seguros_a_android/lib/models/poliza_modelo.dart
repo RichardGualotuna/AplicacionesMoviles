@@ -1,28 +1,17 @@
-class Poliza {
+class PolizaRequest {
   final String propietario;
   final double valorSeguroAuto;
   final String modeloAuto;
-  final String edadPropietario;
+  final int edadPropietario;
   final int accidentes;
-  final double costoTotal;
 
-  Poliza({
+  PolizaRequest({
     required this.propietario,
     required this.valorSeguroAuto,
     required this.modeloAuto,
     required this.edadPropietario,
     required this.accidentes,
-    required this.costoTotal,
   });
-
-  factory Poliza.fromJson(Map<String, dynamic> json) => Poliza(
-    propietario: json['propietario'],
-    valorSeguroAuto: json['valorSeguroAuto'],
-    modeloAuto: json['modeloAuto'],
-    edadPropietario: json['edadPropietario'],
-    accidentes: json['accidentes'],
-    costoTotal: json['costoTotal'],
-  );
 
   Map<String, dynamic> toJson() => {
     'propietario': propietario,
@@ -30,6 +19,32 @@ class Poliza {
     'modeloAuto': modeloAuto,
     'edadPropietario': edadPropietario,
     'accidentes': accidentes,
-    'costoTotal': costoTotal,
   };
+}
+
+class PolizaResponse {
+  final String propietario;
+  final String modeloAuto;
+  final double valorSeguroAuto;
+  final int edadPropietario;
+  final int accidentes;
+  final double costoTotal;
+
+  PolizaResponse({
+    required this.propietario,
+    required this.modeloAuto,
+    required this.valorSeguroAuto,
+    required this.edadPropietario,
+    required this.accidentes,
+    required this.costoTotal,
+  });
+
+  factory PolizaResponse.fromJson(Map<String, dynamic> json) => PolizaResponse(
+    propietario: json['propietario'] ?? '',
+    modeloAuto: json['modeloAuto'] ?? 'A',
+    valorSeguroAuto: (json['valorSeguroAuto'] ?? 0).toDouble(),
+    edadPropietario: json['edadPropietario'] ?? 18,
+    accidentes: json['accidentes'] ?? 0,
+    costoTotal: (json['costoTotal'] ?? 0).toDouble(),
+  );
 }
