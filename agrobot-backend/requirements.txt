@@ -1,0 +1,35 @@
+# requirements.txt - Dependencias para AgroBot EC Backend
+
+# Framework web
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# LangChain y componentes
+langchain==0.1.0
+langchain-community==0.0.38
+langchain-core==0.1.23
+
+# Base de datos vectorial
+chromadb==0.4.22
+
+# Modelos y embeddings
+ollama==0.1.7
+
+# Procesamiento de documentos
+pypdf==3.17.1
+python-multipart==0.0.6
+
+# Validación de datos
+pydantic==2.5.0
+
+# Utilidades
+python-dotenv==1.0.0
+aiofiles==23.2.0
+
+# Logging y monitoreo
+structlog==23.2.0
+
+# Para desarrollo
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
