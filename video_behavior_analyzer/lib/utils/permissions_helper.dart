@@ -80,23 +80,28 @@ class PermissionsHelper {
     }
   }
 
-  static Future<bool> requestAllPermissions() async {
+ static Future<bool> requestAllPermissions() async {
+  if (GetPlatform.isAndroid) {
+    // Para Android 13+ usar permisos separados
+    final Map<Permission, PermissionStatus> results = await [
+      Permission.camera,
+      Permission.microphone,
+      Permission.photos,
+      Permission.videos,
+    ].request();
+
+    return results.values.every((status) => status.isGranted);
+  } else {
+    // iOS y otros
     final results = await [
       Permission.camera,
       Permission.microphone,
       Permission.storage,
     ].request();
-    
+
     return results.values.every((status) => status.isGranted);
   }
-
-  static Future<Map<String, bool>> checkAllPermissions() async {
-    return {
-      'camera': await Permission.camera.isGranted,
-      'microphone': await Permission.microphone.isGranted,
-      'storage': await Permission.storage.isGranted,
-    };
-  }
+}
 
   static void showPermissionDeniedDialog(String permissionName) {
     Get.dialog(

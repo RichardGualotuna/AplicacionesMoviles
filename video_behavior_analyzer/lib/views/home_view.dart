@@ -8,9 +8,6 @@ import '../controllers/video_controller.dart';
 import '../controllers/storage_controller.dart';
 import '../widgets/video_preview_widget.dart';
 import '../models/video_model.dart';
-import '../config/themes.dart';
-import '../config/constants.dart';
-import '../views/analysis_results_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});

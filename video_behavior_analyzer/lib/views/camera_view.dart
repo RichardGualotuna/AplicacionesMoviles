@@ -5,10 +5,6 @@ import 'package:get/get.dart';
 import '../controllers/camera_controller.dart';
 import '../widgets/detection_overlay_widget.dart';
 import '../widgets/behavior_alert_widget.dart';
-// views/camera_view.dart (continuación)
-import '../widgets/behavior_alert_widget.dart';
-import '../models/behavior_model.dart';
-import 'analysis_results_view.dart';
 import '../controllers/video_controller.dart';
 
 class CameraView extends StatefulWidget {

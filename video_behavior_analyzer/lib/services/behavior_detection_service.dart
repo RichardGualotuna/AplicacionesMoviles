@@ -4,7 +4,7 @@ import 'dart:math';
 import '../models/detection_model.dart';
 import '../models/behavior_model.dart';
 import 'ml_service.dart';
-
+import '../services/ml_service.dart';
 
 class BehaviorDetectionService {
   final MLService _mlService = MLService.instance;

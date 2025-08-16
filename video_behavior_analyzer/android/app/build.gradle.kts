@@ -7,7 +7,7 @@ plugins {
 android {
     ndkVersion = "27.0.12077973"
     namespace = "com.example.video_behavior_analyzer"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.video_behavior_analyzer"
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

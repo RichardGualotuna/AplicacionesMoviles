@@ -6,10 +6,6 @@ import '../controllers/video_controller.dart';
 import '../controllers/detection_controller.dart';
 import '../models/detection_model.dart';
 import '../config/constants.dart';
-import '../widgets/behavior_alert_widget.dart';
-import '../widgets/detection_overlay_widget.dart';
-import '../widgets/video_preview_widget.dart';
-import '../config/themes.dart';
 import '../models/behavior_model.dart';
 
 
