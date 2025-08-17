@@ -16,8 +16,9 @@ dependencies:
   video_player: ^2.8.1
   image_picker: ^1.0.4
   
-  # ML y procesamiento (versión compatible)
+  # ML y procesamiento - Versiones específicas para compatibilidad
   tflite_flutter: ^0.10.4
+  tflite_flutter_helper: ^0.4.3
   image: ^4.1.3
   
   # Almacenamiento
@@ -32,8 +33,9 @@ dependencies:
   flutter_speed_dial: ^7.0.0
   percent_indicator: ^4.2.3
   
-  # HTTP
+  # HTTP para descargar modelos
   dio: ^5.4.0
+  http: ^1.1.0
   
 dev_dependencies:
   flutter_test:
@@ -42,5 +44,15 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true  
+  
+  # Assets para modelos y configuración
   assets:
     - assets/models/
+    
+  # Fuentes (opcional)
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: fonts/Roboto-Regular.ttf
+  #       - asset: fonts/Roboto-Bold.ttf
+  #         weight: 700
