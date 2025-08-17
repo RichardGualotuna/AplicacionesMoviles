@@ -16,18 +16,19 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin {
+class _HomeViewState extends State<HomeView>
+    with SingleTickerProviderStateMixin {
   final VideoController videoController = Get.find();
   final StorageController storageController = Get.find();
-  
+
   late TabController _tabController;
-  
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -127,7 +128,8 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                       children: [
                         _buildStatusIndicator(
                           'ML Service',
-                          videoController.currentStatus.value.contains('inicializado'),
+                          videoController.currentStatus.value
+                              .contains('inicializado'),
                         ),
                         _buildStatusIndicator(
                           'Cámara',
@@ -143,9 +145,9 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Current Video Section
             if (videoController.selectedVideo.value != null) ...[
               Card(
@@ -182,7 +184,8 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                                 '${(videoController.analysisProgress.value * 100).toInt()}%',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              progressColor: Theme.of(context).colorScheme.primary,
+                              progressColor:
+                                  Theme.of(context).colorScheme.primary,
                             ),
                         ],
                       ),
@@ -222,9 +225,9 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 16),
-            
+
             // Quick Actions
             Text(
               'Acciones Rápidas',
@@ -297,7 +300,7 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
     final hasCritical = video.behaviors.any(
       (b) => b.severity == SeverityLevel.critical,
     );
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: ListTile(
@@ -392,7 +395,8 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
         }
 
         final stats = snapshot.data!;
-        final behaviorCounts = stats['behavior_counts'] as Map<String, int>? ?? {};
+        final behaviorCounts =
+            stats['behavior_counts'] as Map<String, int>? ?? {};
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -421,9 +425,9 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Behavior Statistics
               Card(
                 child: Padding(
@@ -473,46 +477,46 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Storage Info
               Obx(() => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Almacenamiento',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 16),
-                      LinearProgressIndicator(
-                        value: storageController.storagePercentage.value,
-                        minHeight: 8,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Usado: ${storageController.getFormattedStorageUsed()}',
+                            'Almacenamiento',
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
+                          const SizedBox(height: 16),
+                          LinearProgressIndicator(
+                            value: storageController.storagePercentage.value,
+                            minHeight: 8,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Usado: ${storageController.getFormattedStorageUsed()}',
+                              ),
+                              Text(
+                                'Disponible: ${storageController.getFormattedAvailableSpace()}',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
                           Text(
-                            'Disponible: ${storageController.getFormattedAvailableSpace()}',
+                            storageController.getCleanupRecommendation(),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        storageController.getCleanupRecommendation(),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              )),
+                    ),
+                  )),
             ],
           ),
         );
@@ -677,7 +681,8 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
     Get.dialog(
       AlertDialog(
         title: const Text('Eliminar Video'),
-        content: const Text('¿Estás seguro de eliminar este video y su análisis?'),
+        content:
+            const Text('¿Estás seguro de eliminar este video y su análisis?'),
         actions: [
           TextButton(
             onPressed: () => Get.back(),

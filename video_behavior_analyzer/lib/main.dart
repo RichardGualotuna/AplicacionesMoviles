@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'config/themes.dart';
+import 'config/routes.dart';
 import 'controllers/video_controller.dart';
 import 'controllers/camera_controller.dart';
 import 'controllers/detection_controller.dart';
@@ -43,6 +44,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialBinding: InitialBinding(),
       home: const HomeView(),
+      getPages: AppRoutes.routes, // Registrar las rutas
     );
   }
 }
@@ -56,6 +58,7 @@ class PermissionWrapper extends StatefulWidget {
 
 class _PermissionWrapperState extends State<PermissionWrapper> {
   bool _permissionsGranted = false;
+  bool _isChecking = true;
 
   @override
   void initState() {
@@ -64,18 +67,28 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
   }
 
   Future<void> _checkPermissions() async {
-    final granted = await PermissionsHelper.requestAllPermissions();
     setState(() {
-      _permissionsGranted = granted;
+      _isChecking = true;
     });
 
-    if (granted) {
-      Get.offAll(() => const HomeView());
-    }
+    final granted = await PermissionsHelper.requestAllPermissions();
+
+    setState(() {
+      _permissionsGranted = granted;
+      _isChecking = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     if (!_permissionsGranted) {
       return Scaffold(
         body: Center(
@@ -97,9 +110,15 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
+              ElevatedButton.icon(
                 onPressed: _checkPermissions,
-                child: const Text('Conceder Permisos'),
+                icon: const Icon(Icons.lock_open),
+                label: const Text('Conceder Permisos'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => PermissionsHelper.openAppSettings(),
+                child: const Text('Abrir Configuración'),
               ),
             ],
           ),
@@ -114,9 +133,9 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<VideoController>(() => VideoController());
-    Get.lazyPut<CameraControllerX>(() => CameraControllerX());
-    Get.lazyPut<DetectionController>(() => DetectionController());
-    Get.lazyPut<StorageController>(() => StorageController());
+    Get.lazyPut<VideoController>(() => VideoController(), fenix: true);
+    Get.lazyPut<CameraControllerX>(() => CameraControllerX(), fenix: true);
+    Get.lazyPut<DetectionController>(() => DetectionController(), fenix: true);
+    Get.lazyPut<StorageController>(() => StorageController(), fenix: true);
   }
 }

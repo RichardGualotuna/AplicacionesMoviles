@@ -14,19 +14,39 @@ class AppRoutes {
   static List<GetPage> routes = [
     GetPage(
       name: home,
-      page: () => const HomeView(),
+      page: () {
+        print('Navegando a HOME');
+        return const HomeView();
+      },
+      transition: Transition.fade,
+      transitionDuration: const Duration(milliseconds: 200),
     ),
     GetPage(
       name: camera,
-      page: () => const CameraView(),
+      page: () {
+        print('Navegando a CAMERA');
+        return const CameraView();
+      },
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: analysisResults,
-      page: () => const AnalysisResultsView(),
+      page: () {
+        print('Navegando a ANALYSIS RESULTS');
+        return const AnalysisResultsView();
+      },
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: videoPlayer,
-      page: () => const VideoPlayerView(),
+      page: () {
+        print('Navegando a VIDEO PLAYER');
+        return const VideoPlayerView();
+      },
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
   ];
 }

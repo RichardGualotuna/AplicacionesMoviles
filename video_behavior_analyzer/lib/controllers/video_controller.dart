@@ -244,14 +244,19 @@ class VideoController extends GetxController {
   }
 
   // Mostrar resultados del análisis
-  void _showAnalysisResults() {
-    if (currentVideoModel.value == null) return;
-    
-    final model = currentVideoModel.value!;
-    
-    Get.defaultDialog(
-      title: 'Análisis Completado',
-      content: Column(
+// controllers/video_controller.dart - Método actualizado
+// Reemplazar el método _showAnalysisResults() completo:
+
+void _showAnalysisResults() {
+  if (currentVideoModel.value == null) return;
+  
+  final model = currentVideoModel.value!;
+  
+  Get.defaultDialog(
+    title: 'Análisis Completado',
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text('Duración: ${_formatDuration(model.duration)}'),
           const SizedBox(height: 10),
@@ -260,25 +265,30 @@ class VideoController extends GetxController {
           const SizedBox(height: 10),
           if (model.behaviors.isNotEmpty) ...[
             const Text('Comportamientos:'),
-            ...model.behaviors.map((b) => Text(
-              '• ${_getBehaviorName(b.type)} (${(b.confidence * 100).toStringAsFixed(1)}%)'
+            ...model.behaviors.take(3).map((b) => Text(
+              '• ${_getBehaviorName(b.type)} (${(b.confidence * 100).toStringAsFixed(1)}%)',
+              style: const TextStyle(fontSize: 12),
             )),
           ],
         ],
       ),
-      confirm: TextButton(
-        onPressed: () {
-          Get.back();
+    ),
+    confirm: TextButton(
+      onPressed: () {
+        Get.back(); // Cerrar el diálogo
+        // Asegurarse de que los datos están listos antes de navegar
+        Future.delayed(const Duration(milliseconds: 100), () {
           Get.toNamed('/analysis-results');
-        },
-        child: const Text('Ver Detalles'),
-      ),
-      cancel: TextButton(
-        onPressed: () => Get.back(),
-        child: const Text('Cerrar'),
-      ),
-    );
-  }
+        });
+      },
+      child: const Text('Ver Detalles'),
+    ),
+    cancel: TextButton(
+      onPressed: () => Get.back(),
+      child: const Text('Cerrar'),
+    ),
+  );
+}
 
   // Cargar historial de videos
   Future<void> loadVideoHistory() async {

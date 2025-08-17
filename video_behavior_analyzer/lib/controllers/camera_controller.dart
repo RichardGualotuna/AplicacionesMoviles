@@ -9,9 +9,6 @@ import '../models/detection_model.dart';
 import '../models/behavior_model.dart';
 import '../services/behavior_detection_service.dart';
 
-  
-
-
 class CameraControllerX extends GetxController {
   CameraController? cameraController;
   final MLService _mlService = MLService.instance;
@@ -41,6 +38,8 @@ class CameraControllerX extends GetxController {
   @override
   void onInit() async {
     super.onInit();
+    // Dar tiempo para que el binding se complete
+    await Future.delayed(const Duration(milliseconds: 100));
     await initializeCameras();
   }
 
@@ -243,74 +242,74 @@ class CameraControllerX extends GetxController {
     liveBehaviors.clear();
   }
 
-void _processFrames() async {
-  if (!isRealTimeAnalysis.value || cameraController == null) {
-    return;
-  }
-  
-  final now = DateTime.now();
-  if (lastFrameTime != null) {
-    final elapsed = now.difference(lastFrameTime!).inMilliseconds;
-    final targetInterval = 1000 / detectionFPS.value;
-    
-    if (elapsed < targetInterval) {
-      await Future.delayed(
-        Duration(milliseconds: (targetInterval - elapsed).toInt()),
-      );
+  void _processFrames() async {
+    if (!isRealTimeAnalysis.value || cameraController == null) {
+      return;
     }
-  }
-  
-  if (!isRealTimeAnalysis.value) return;
-  
-  try {
-    isProcessing.value = true;
-    lastFrameTime = DateTime.now();
     
-    final image = await cameraController!.takePicture();
-    final imageBytes = await image.readAsBytes();
-    
-    final detections = await _mlService.detectObjects(imageBytes);
-    liveDetections.value = detections;
-    
-    final personDetections = detections.where((d) => d.label == 'person').toList();
-    
-    if (personDetections.isNotEmpty) {
-      final behavior = await _behaviorService.analyzeFrame(
-        imageBytes,
-        personDetections,
-        {},
-        0,
-      );
+    final now = DateTime.now();
+    if (lastFrameTime != null) {
+      final elapsed = now.difference(lastFrameTime!).inMilliseconds;
+      final targetInterval = 1000 / detectionFPS.value;
       
-      if (behavior != null && behavior.type != BehaviorType.normal) {
-        liveBehaviors.add(behavior);
-        
-        if (liveBehaviors.length > 10) {
-          liveBehaviors.removeAt(0);
-        }
-        
-        if (enableAudioAlerts.value && 
-            (behavior.severity == SeverityLevel.high || 
-             behavior.severity == SeverityLevel.critical)) {
-          _playAlert(behavior.type);
-        }
+      if (elapsed < targetInterval) {
+        await Future.delayed(
+          Duration(milliseconds: (targetInterval - elapsed).toInt()),
+        );
       }
     }
     
-    // Limpiar imagen temporal
-    final file = File(image.path);
-    await file.delete();
+    if (!isRealTimeAnalysis.value) return;
     
-  } catch (e) {
-    print('Error processing frame: $e');
-  } finally {
-    isProcessing.value = false;
-    
-    if (isRealTimeAnalysis.value) {
-      _processFrames();
+    try {
+      isProcessing.value = true;
+      lastFrameTime = DateTime.now();
+      
+      final image = await cameraController!.takePicture();
+      final imageBytes = await image.readAsBytes();
+      
+      final detections = await _mlService.detectObjects(imageBytes);
+      liveDetections.value = detections;
+      
+      final personDetections = detections.where((d) => d.label == 'person').toList();
+      
+      if (personDetections.isNotEmpty) {
+        final behavior = await _behaviorService.analyzeFrame(
+          imageBytes,
+          personDetections,
+          {},
+          0,
+        );
+        
+        if (behavior != null && behavior.type != BehaviorType.normal) {
+          liveBehaviors.add(behavior);
+          
+          if (liveBehaviors.length > 10) {
+            liveBehaviors.removeAt(0);
+          }
+          
+          if (enableAudioAlerts.value && 
+              (behavior.severity == SeverityLevel.high || 
+               behavior.severity == SeverityLevel.critical)) {
+            _playAlert(behavior.type);
+          }
+        }
+      }
+      
+      // Limpiar imagen temporal
+      final file = File(image.path);
+      await file.delete();
+      
+    } catch (e) {
+      print('Error processing frame: $e');
+    } finally {
+      isProcessing.value = false;
+      
+      if (isRealTimeAnalysis.value) {
+        _processFrames();
+      }
     }
   }
-}
 
   void _playAlert(BehaviorType type) {
     // Implementar reproducción de audio según el tipo de comportamiento
