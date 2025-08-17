@@ -219,44 +219,54 @@ class DetectionController extends GetxController {
    };
  }
 
- // Importar configuración
- void importSettings(Map<String, dynamic> settings) {
-   if (settings['selectedLabels'] != null) {
-     selectedLabels.value = List<String>.from(settings['selectedLabels']);
-   }
-   
-   if (settings['minConfidence'] != null) {
-     minConfidence.value = settings['minConfidence'];
-   }
-   
-   if (settings['selectedBehaviors'] != null) {
-     selectedBehaviors.value = (settings['selectedBehaviors'] as List)
-         .map((b) => BehaviorType.values.firstWhere(
-             (type) => type.toString() == b,
-             orElse: () => BehaviorType.normal))
-         .toList();
-   }
-   
-   if (settings['minSeverity'] != null) {
-     minSeverity.value = SeverityLevel.values.firstWhereOrNull(
-         (s) => s.toString() == settings['minSeverity']);
-   }
-   
-   showLabels.value = settings['showLabels'] ?? true;
-   showConfidence.value = settings['showConfidence'] ?? true;
-   showBoundingBoxes.value = settings['showBoundingBoxes'] ?? true;
-   boundingBoxOpacity.value = settings['boundingBoxOpacity'] ?? 0.7;
-   
-   if (settings['alertLabels'] != null) {
-     alertLabels.value = List<String>.from(settings['alertLabels']);
-   }
-   
-   if (settings['alertBehaviors'] != null) {
-     alertBehaviors.value = (settings['alertBehaviors'] as List)
-         .map((b) => BehaviorType.values.firstWhere(
-             (type) => type.toString() == b,
-             orElse: () => BehaviorType.normal))
-         .toList();
-   }
- }
+void importSettings(Map<String, dynamic> settings) {
+    if (settings['selectedLabels'] != null) {
+      selectedLabels.value = List<String>.from(settings['selectedLabels']);
+    }
+    
+    if (settings['minConfidence'] != null) {
+      minConfidence.value = settings['minConfidence'];
+    }
+    
+    if (settings['selectedBehaviors'] != null) {
+      selectedBehaviors.value = (settings['selectedBehaviors'] as List)
+          .map((b) => BehaviorType.values.firstWhere(
+              (type) => type.toString() == b,
+              orElse: () => BehaviorType.normal))
+          .toList();
+    }
+    
+    if (settings['minSeverity'] != null) {
+      minSeverity.value = SeverityLevel.values.firstWhereOrNull(
+          (s) => s.toString() == settings['minSeverity']);
+    }
+    
+    showLabels.value = settings['showLabels'] ?? true;
+    showConfidence.value = settings['showConfidence'] ?? true;
+    showBoundingBoxes.value = settings['showBoundingBoxes'] ?? true;
+    boundingBoxOpacity.value = settings['boundingBoxOpacity'] ?? 0.7;
+    
+    if (settings['alertLabels'] != null) {
+      alertLabels.value = List<String>.from(settings['alertLabels']);
+    }
+    
+    if (settings['alertBehaviors'] != null) {
+      alertBehaviors.value = (settings['alertBehaviors'] as List)
+          .map((b) => BehaviorType.values.firstWhere(
+              (type) => type.toString() == b,
+              orElse: () => BehaviorType.normal))
+          .toList();
+    }
+  }
+}
+
+// Extensión para firstWhereOrNull
+extension IterableExtension<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    try {
+      return firstWhere(test);
+    } catch (e) {
+      return null;
+    }
+  }
 }

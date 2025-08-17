@@ -6,6 +6,7 @@ version: 1.0.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.13.0'
 
 dependencies:
   flutter:
@@ -16,9 +17,8 @@ dependencies:
   video_player: ^2.8.1
   image_picker: ^1.0.4
   
-  # ML y procesamiento - Versiones específicas para compatibilidad
-  tflite_flutter: ^0.10.4
-  tflite_flutter_helper: ^0.4.3
+  # ML y procesamiento - Versiones compatibles
+  tflite_flutter: ^0.10.4  # Versión más estable
   image: ^4.1.3
   
   # Almacenamiento
@@ -48,11 +48,8 @@ flutter:
   # Assets para modelos y configuración
   assets:
     - assets/models/
+    - assets/icons/
     
-  # Fuentes (opcional)
-  # fonts:
-  #   - family: Roboto
-  #     fonts:
-  #       - asset: fonts/Roboto-Regular.ttf
-  #       - asset: fonts/Roboto-Bold.ttf
-  #         weight: 700
+dependency_overrides:
+  # Forzar versión compatible
+  ffi: ^2.0.0

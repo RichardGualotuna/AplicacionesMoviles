@@ -12,14 +12,15 @@ class MLService {
   Interpreter? _interpreter;
   List<String> _labels = [];
   bool _isInitialized = false;
-  
-  // Configuración del modelo
-  static const String MODEL_FILE = 'ssd_mobilenet.tflite';
+
+  // Configuración del modelo - actualizar según tu modelo
+  static const String MODEL_FILE =
+      'ssd_mobilenet.tflite'; // Cambia por el nombre de tu modelo
   static const String LABELS_FILE = 'coco_labels.txt';
-  static const int INPUT_SIZE = 300;
-  static const int NUM_RESULTS = 10;
+  static const int INPUT_SIZE = 640; // Típico para YOLOv8
+  static const int NUM_RESULTS = 100;
   static const double THRESHOLD = 0.5;
-  
+
   static MLService get instance {
     _instance ??= MLService._();
     return _instance!;
@@ -32,16 +33,15 @@ class MLService {
 
     try {
       print('Inicializando ML Service con modelo real...');
-      
+
       // Cargar etiquetas
       await _loadLabels();
-      
+
       // Cargar modelo
       await _loadModel();
-      
+
       _isInitialized = true;
       print('ML Service inicializado correctamente con modelo real');
-      
     } catch (e) {
       print('Error inicializando ML Service: $e');
       print('Continuando en modo simulación...');
@@ -52,8 +52,10 @@ class MLService {
 
   Future<void> _loadLabels() async {
     try {
-      final labelsData = await rootBundle.loadString('assets/models/$LABELS_FILE');
-      _labels = labelsData.split('\n')
+      final labelsData =
+          await rootBundle.loadString('assets/models/$LABELS_FILE');
+      _labels = labelsData
+          .split('\n')
           .where((label) => label.isNotEmpty)
           .map((label) => label.trim())
           .toList();
@@ -67,28 +69,42 @@ class MLService {
 
   Future<void> _loadModel() async {
     try {
+      // Verificar si el archivo existe
+      try {
+        await rootBundle.load('assets/models/$MODEL_FILE');
+      } catch (e) {
+        print(
+            'Modelo $MODEL_FILE no encontrado en assets. Usando modo simulación.');
+        _interpreter = null;
+        return;
+      }
+
       // Opciones del intérprete
-      final options = InterpreterOptions()
-        ..threads = 4
-        ..useNnApiForAndroid = true;
-      
+      final options = InterpreterOptions()..threads = 4;
+
+      // Intentar usar aceleración por hardware si está disponible
+      try {
+        options.useNnApiForAndroid = true;
+      } catch (e) {
+        print('NNAPI no disponible: $e');
+      }
+
       // Cargar modelo desde assets
       _interpreter = await Interpreter.fromAsset(
         'models/$MODEL_FILE',
         options: options,
       );
-      
+
       print('Modelo TFLite cargado exitosamente');
-      
+
       // Imprimir información del modelo
       var inputTensor = _interpreter!.getInputTensor(0);
       var outputTensor = _interpreter!.getOutputTensor(0);
-      
+
       print('Input shape: ${inputTensor.shape}');
       print('Input type: ${inputTensor.type}');
       print('Output shape: ${outputTensor.shape}');
       print('Output type: ${outputTensor.type}');
-      
     } catch (e) {
       print('Error cargando modelo: $e');
       _interpreter = null;
@@ -115,16 +131,15 @@ class MLService {
 
       // Preprocesar imagen
       var input = _preprocessImage(image);
-      
-      // Preparar outputs
-      var output = _prepareOutputs();
-      
+
+      // Preparar outputs - esto depende del modelo específico
+      var outputs = _prepareOutputs();
+
       // Ejecutar inferencia
-      _interpreter!.run(input, output);
-      
+      _interpreter!.run(input, outputs);
+
       // Procesar resultados
-      return _processResults(output, image.width, image.height);
-      
+      return _processResults(outputs, image.width, image.height);
     } catch (e) {
       print('Error durante la detección: $e');
       return _simulateDetection();
@@ -140,7 +155,7 @@ class MLService {
       interpolation: img.Interpolation.linear,
     );
 
-    // Normalizar pixels a [0, 1] o [-1, 1] dependiendo del modelo
+    // Normalizar pixels [0, 255] -> [0, 1]
     var input = List.generate(
       1,
       (i) => List.generate(
@@ -150,9 +165,9 @@ class MLService {
           (x) {
             var pixel = resized.getPixel(x, y);
             return [
-              pixel.r / 255.0,  // Red
-              pixel.g / 255.0,  // Green  
-              pixel.b / 255.0,  // Blue
+              pixel.r / 255.0,
+              pixel.g / 255.0,
+              pixel.b / 255.0,
             ];
           },
         ),
@@ -163,38 +178,17 @@ class MLService {
   }
 
   Map<int, Object> _prepareOutputs() {
-    // La estructura de salida depende del modelo específico
-    // Para SSD MobileNet típicamente es:
-    
-    // Locations/Boxes [1, NUM_RESULTS, 4]
-    var locations = List.generate(
-      1,
-      (i) => List.generate(
-        NUM_RESULTS,
-        (j) => List<double>.filled(4, 0),
-      ),
-    );
-    
-    // Classes [1, NUM_RESULTS]
-    var classes = List.generate(
-      1,
-      (i) => List<double>.filled(NUM_RESULTS, 0),
-    );
-    
-    // Scores [1, NUM_RESULTS]
-    var scores = List.generate(
-      1,
-      (i) => List<double>.filled(NUM_RESULTS, 0),
-    );
-    
-    // Number of detections [1]
-    var numDetections = List<double>.filled(1, 0);
-    
+    // Para YOLOv8, típicamente el output es [1, 84, 8400] o similar
+    // Esto puede variar según tu modelo específico
+
     return {
-      0: locations,
-      1: classes,
-      2: scores,
-      3: numDetections,
+      0: List.generate(
+        1,
+        (i) => List.generate(
+          84, // num_classes + 4 (bbox)
+          (j) => List<double>.filled(8400, 0), // num_anchors
+        ),
+      ),
     };
   }
 
@@ -204,35 +198,44 @@ class MLService {
     int imageHeight,
   ) {
     List<DetectionModel> detections = [];
-    
+
     try {
-      var locations = outputs[0] as List<List<List<double>>>;
-      var classes = outputs[1] as List<List<double>>;
-      var scores = outputs[2] as List<List<double>>;
-      var numDetections = (outputs[3] as List<double>)[0].toInt();
-      
-      for (int i = 0; i < min(numDetections, NUM_RESULTS); i++) {
-        double score = scores[0][i];
-        
-        if (score >= THRESHOLD) {
-          int classId = classes[0][i].toInt();
-          String label = classId < _labels.length ? _labels[classId] : 'Unknown';
-          
-          // Las coordenadas están normalizadas [0, 1]
-          double y1 = locations[0][i][0];
-          double x1 = locations[0][i][1];
-          double y2 = locations[0][i][2];
-          double x2 = locations[0][i][3];
-          
+      // Este es un ejemplo genérico - ajusta según tu modelo
+      var output = outputs[0] as List<List<List<double>>>;
+
+      // Procesar cada detección
+      for (int i = 0; i < output[0][0].length; i++) {
+        // Extraer coordenadas y confianza
+        double x = output[0][0][i];
+        double y = output[0][1][i];
+        double w = output[0][2][i];
+        double h = output[0][3][i];
+
+        // Encontrar la clase con mayor confianza
+        double maxConf = 0;
+        int bestClass = 0;
+
+        for (int j = 4; j < output[0].length; j++) {
+          double conf = output[0][j][i];
+          if (conf > maxConf) {
+            maxConf = conf;
+            bestClass = j - 4;
+          }
+        }
+
+        if (maxConf >= THRESHOLD) {
+          String label =
+              bestClass < _labels.length ? _labels[bestClass] : 'Unknown';
+
           detections.add(
             DetectionModel(
               label: label,
-              confidence: score,
+              confidence: maxConf,
               boundingBox: BoundingBox(
-                x: x1,
-                y: y1,
-                width: x2 - x1,
-                height: y2 - y1,
+                x: (x - w / 2) / INPUT_SIZE,
+                y: (y - h / 2) / INPUT_SIZE,
+                width: w / INPUT_SIZE,
+                height: h / INPUT_SIZE,
               ),
               frameNumber: 0,
               timestamp: DateTime.now(),
@@ -243,56 +246,7 @@ class MLService {
     } catch (e) {
       print('Error procesando resultados: $e');
     }
-    
-    return detections;
-  }
 
-  // Método alternativo para modelos YOLO
-  List<DetectionModel> _processYoloResults(
-    List<List<double>> output,
-    int imageWidth,
-    int imageHeight,
-  ) {
-    List<DetectionModel> detections = [];
-    
-    // YOLO output format: [x, y, w, h, confidence, ...class_scores]
-    for (var detection in output) {
-      if (detection.length < 5) continue;
-      
-      double confidence = detection[4];
-      if (confidence < THRESHOLD) continue;
-      
-      // Encontrar la clase con mayor probabilidad
-      int bestClass = 0;
-      double maxScore = 0;
-      
-      for (int i = 5; i < detection.length; i++) {
-        if (detection[i] > maxScore) {
-          maxScore = detection[i];
-          bestClass = i - 5;
-        }
-      }
-      
-      if (maxScore < THRESHOLD) continue;
-      
-      String label = bestClass < _labels.length ? _labels[bestClass] : 'Unknown';
-      
-      detections.add(
-        DetectionModel(
-          label: label,
-          confidence: maxScore,
-          boundingBox: BoundingBox(
-            x: detection[0] - detection[2] / 2,
-            y: detection[1] - detection[3] / 2,
-            width: detection[2],
-            height: detection[3],
-          ),
-          frameNumber: 0,
-          timestamp: DateTime.now(),
-        ),
-      );
-    }
-    
     return detections;
   }
 
@@ -300,7 +254,7 @@ class MLService {
   List<DetectionModel> _simulateDetection() {
     final random = Random();
     List<DetectionModel> detections = [];
-    
+
     // Simular detección de persona con alta probabilidad
     if (random.nextDouble() > 0.3) {
       detections.add(
@@ -318,7 +272,7 @@ class MLService {
         ),
       );
     }
-    
+
     return detections;
   }
 
@@ -337,7 +291,7 @@ class MLService {
     final random = Random();
     double normal = 0.6 + random.nextDouble() * 0.3;
     double remaining = 1.0 - normal;
-    
+
     return {
       'normal': normal,
       'intoxication': remaining * 0.3,
@@ -351,22 +305,86 @@ class MLService {
 
   List<String> _getDefaultLabels() {
     return [
-      'person', 'bicycle', 'car', 'motorcycle', 'airplane',
-      'bus', 'train', 'truck', 'boat', 'traffic light',
-      'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird',
-      'cat', 'dog', 'horse', 'sheep', 'cow',
-      'elephant', 'bear', 'zebra', 'giraffe', 'backpack',
-      'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-      'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
-      'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle',
-      'wine glass', 'cup', 'fork', 'knife', 'spoon',
-      'bowl', 'banana', 'apple', 'sandwich', 'orange',
-      'broccoli', 'carrot', 'hot dog', 'pizza', 'donut',
-      'cake', 'chair', 'couch', 'potted plant', 'bed',
-      'dining table', 'toilet', 'tv', 'laptop', 'mouse',
-      'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
-      'toaster', 'sink', 'refrigerator', 'book', 'clock',
-      'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+      'person',
+      'bicycle',
+      'car',
+      'motorcycle',
+      'airplane',
+      'bus',
+      'train',
+      'truck',
+      'boat',
+      'traffic light',
+      'fire hydrant',
+      'stop sign',
+      'parking meter',
+      'bench',
+      'bird',
+      'cat',
+      'dog',
+      'horse',
+      'sheep',
+      'cow',
+      'elephant',
+      'bear',
+      'zebra',
+      'giraffe',
+      'backpack',
+      'umbrella',
+      'handbag',
+      'tie',
+      'suitcase',
+      'frisbee',
+      'skis',
+      'snowboard',
+      'sports ball',
+      'kite',
+      'baseball bat',
+      'baseball glove',
+      'skateboard',
+      'surfboard',
+      'tennis racket',
+      'bottle',
+      'wine glass',
+      'cup',
+      'fork',
+      'knife',
+      'spoon',
+      'bowl',
+      'banana',
+      'apple',
+      'sandwich',
+      'orange',
+      'broccoli',
+      'carrot',
+      'hot dog',
+      'pizza',
+      'donut',
+      'cake',
+      'chair',
+      'couch',
+      'potted plant',
+      'bed',
+      'dining table',
+      'toilet',
+      'tv',
+      'laptop',
+      'mouse',
+      'remote',
+      'keyboard',
+      'cell phone',
+      'microwave',
+      'oven',
+      'toaster',
+      'sink',
+      'refrigerator',
+      'book',
+      'clock',
+      'vase',
+      'scissors',
+      'teddy bear',
+      'hair drier',
+      'toothbrush'
     ];
   }
 
