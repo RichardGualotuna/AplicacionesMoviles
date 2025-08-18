@@ -13,29 +13,29 @@ import 'package:flutter/material.dart';
 class VideoController extends GetxController {
   final VideoAnalysisService _analysisService = VideoAnalysisService();
   late final LocalStorageService _storageService;
-  
+
   // Estados observables
   final RxBool isLoading = false.obs;
   final RxBool isAnalyzing = false.obs;
   final RxDouble analysisProgress = 0.0.obs;
   final RxString currentStatus = ''.obs;
-  
+
   // Video actual
   final Rx<File?> selectedVideo = Rx<File?>(null);
   final Rx<VideoModel?> currentVideoModel = Rx<VideoModel?>(null);
-  
+
   // Resultados de análisis
   final RxList<DetectionModel> currentDetections = <DetectionModel>[].obs;
   final RxList<BehaviorModel> detectedBehaviors = <BehaviorModel>[].obs;
-  
+
   // Historial
   final RxList<VideoModel> videoHistory = <VideoModel>[].obs;
-  
+
   // Configuración
   final RxInt frameSkip = 5.obs;
   final RxDouble confidenceThreshold = 0.5.obs;
   final RxBool autoSave = true.obs;
-  
+
   @override
   void onInit() async {
     super.onInit();
@@ -43,27 +43,40 @@ class VideoController extends GetxController {
     await loadVideoHistory();
   }
 
+  // controllers/video_controller.dart - FRAGMENTO CORREGIDO
+// Reemplaza el método _initializeServices() y _loadSettings() con estos:
+
   Future<void> _initializeServices() async {
     try {
       isLoading.value = true;
       currentStatus.value = 'Inicializando servicios...';
-      
-      // Inicializar ML Service
+
+      // Inicializar ML Service primero
       await MLService.instance.initialize();
-      
+      currentStatus.value = 'ML Service inicializado...';
+
       // Inicializar Storage Service
       _storageService = await LocalStorageService.getInstance();
-      
-      // Cargar configuración
-      _loadSettings();
-      
+      currentStatus.value = 'Storage Service inicializado...';
+
+      // Esperar un momento para asegurar que todo esté listo
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Cargar configuración solo si el servicio está listo
+      if (_storageService != null) {
+        _loadSettings();
+      }
+
       currentStatus.value = 'Servicios inicializados';
     } catch (e) {
       currentStatus.value = 'Error: $e';
+      print('Error en _initializeServices: $e');
       Get.snackbar(
         'Error',
         'No se pudieron inicializar los servicios: $e',
         snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
       );
     } finally {
       isLoading.value = false;
@@ -71,10 +84,26 @@ class VideoController extends GetxController {
   }
 
   void _loadSettings() {
-    final settings = _storageService.loadSettings();
-    frameSkip.value = settings['frame_skip'] ?? 5;
-    confidenceThreshold.value = settings['confidence_threshold'] ?? 0.5;
-    autoSave.value = settings['auto_save_analysis'] ?? true;
+    try {
+      if (_storageService == null) {
+        print('Warning: Storage service not available');
+        return;
+      }
+
+      final settings = _storageService.loadSettings();
+      frameSkip.value = settings['frame_skip'] ?? 5;
+      confidenceThreshold.value =
+          settings['confidence_threshold']?.toDouble() ?? 0.5;
+      autoSave.value = settings['auto_save_analysis'] ?? true;
+
+      print('Settings loaded successfully');
+    } catch (e) {
+      print('Error loading settings: $e');
+      // Usar valores por defecto si hay error
+      frameSkip.value = 5;
+      confidenceThreshold.value = 0.5;
+      autoSave.value = true;
+    }
   }
 
   // Seleccionar video de galería
@@ -85,11 +114,11 @@ class VideoController extends GetxController {
         source: ImageSource.gallery,
         maxDuration: const Duration(minutes: 10),
       );
-      
+
       if (video != null) {
         selectedVideo.value = File(video.path);
         currentStatus.value = 'Video seleccionado: ${video.name}';
-        
+
         // Resetear análisis previo
         _resetAnalysis();
       }
@@ -110,14 +139,14 @@ class VideoController extends GetxController {
         source: ImageSource.camera,
         maxDuration: const Duration(minutes: 5),
       );
-      
+
       if (video != null) {
         selectedVideo.value = File(video.path);
         currentStatus.value = 'Video grabado exitosamente';
-        
+
         // Resetear análisis previo
         _resetAnalysis();
-        
+
         // Guardar video en almacenamiento local
         if (autoSave.value) {
           final savedPath = await _storageService.saveVideo(File(video.path));
@@ -148,13 +177,14 @@ class VideoController extends GetxController {
       isAnalyzing.value = true;
       analysisProgress.value = 0.0;
       currentStatus.value = 'Iniciando análisis...';
-      
+
       // Configurar callbacks
       _analysisService.onProgress = (progress) {
         analysisProgress.value = progress;
-        currentStatus.value = 'Analizando... ${(progress * 100).toStringAsFixed(1)}%';
+        currentStatus.value =
+            'Analizando... ${(progress * 100).toStringAsFixed(1)}%';
       };
-      
+
       _analysisService.onDetection = (detections) {
         // Filtrar por umbral de confianza
         final filtered = detections
@@ -162,29 +192,28 @@ class VideoController extends GetxController {
             .toList();
         currentDetections.addAll(filtered);
       };
-      
+
       _analysisService.onBehaviorDetected = (behavior) {
         detectedBehaviors.add(behavior);
         _handleBehaviorAlert(behavior);
       };
-      
+
       // Ejecutar análisis
       final videoModel = await _analysisService.analyzeVideo(
         selectedVideo.value!.path,
         frameSkip: frameSkip.value,
       );
-      
+
       currentVideoModel.value = videoModel;
-      
+
       // Guardar análisis si está habilitado
       if (autoSave.value) {
         await _storageService.saveVideoAnalysis(videoModel);
         await loadVideoHistory(); // Actualizar historial
       }
-      
+
       currentStatus.value = 'Análisis completado';
       _showAnalysisResults();
-      
     } catch (e) {
       currentStatus.value = 'Error en análisis: $e';
       Get.snackbar(
@@ -201,7 +230,7 @@ class VideoController extends GetxController {
   void _handleBehaviorAlert(BehaviorModel behavior) {
     String message = '';
     String title = '';
-    
+
     switch (behavior.type) {
       case BehaviorType.violence:
         title = '⚠️ Violencia Detectada';
@@ -226,15 +255,15 @@ class VideoController extends GetxController {
       default:
         return;
     }
-    
+
     // Mostrar notificación según severidad
-    if (behavior.severity == SeverityLevel.critical || 
+    if (behavior.severity == SeverityLevel.critical ||
         behavior.severity == SeverityLevel.high) {
       Get.snackbar(
         title,
         message,
-        backgroundColor: behavior.severity == SeverityLevel.critical 
-            ? Get.theme.colorScheme.error 
+        backgroundColor: behavior.severity == SeverityLevel.critical
+            ? Get.theme.colorScheme.error
             : Get.theme.colorScheme.errorContainer,
         colorText: Get.theme.colorScheme.onError,
         duration: const Duration(seconds: 5),
@@ -247,48 +276,48 @@ class VideoController extends GetxController {
 // controllers/video_controller.dart - Método actualizado
 // Reemplazar el método _showAnalysisResults() completo:
 
-void _showAnalysisResults() {
-  if (currentVideoModel.value == null) return;
-  
-  final model = currentVideoModel.value!;
-  
-  Get.defaultDialog(
-    title: 'Análisis Completado',
-    content: SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('Duración: ${_formatDuration(model.duration)}'),
-          const SizedBox(height: 10),
-          Text('Objetos detectados: ${model.detections.length}'),
-          Text('Comportamientos detectados: ${model.behaviors.length}'),
-          const SizedBox(height: 10),
-          if (model.behaviors.isNotEmpty) ...[
-            const Text('Comportamientos:'),
-            ...model.behaviors.take(3).map((b) => Text(
-              '• ${_getBehaviorName(b.type)} (${(b.confidence * 100).toStringAsFixed(1)}%)',
-              style: const TextStyle(fontSize: 12),
-            )),
+  void _showAnalysisResults() {
+    if (currentVideoModel.value == null) return;
+
+    final model = currentVideoModel.value!;
+
+    Get.defaultDialog(
+      title: 'Análisis Completado',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Duración: ${_formatDuration(model.duration)}'),
+            const SizedBox(height: 10),
+            Text('Objetos detectados: ${model.detections.length}'),
+            Text('Comportamientos detectados: ${model.behaviors.length}'),
+            const SizedBox(height: 10),
+            if (model.behaviors.isNotEmpty) ...[
+              const Text('Comportamientos:'),
+              ...model.behaviors.take(3).map((b) => Text(
+                    '• ${_getBehaviorName(b.type)} (${(b.confidence * 100).toStringAsFixed(1)}%)',
+                    style: const TextStyle(fontSize: 12),
+                  )),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
-    confirm: TextButton(
-      onPressed: () {
-        Get.back(); // Cerrar el diálogo
-        // Asegurarse de que los datos están listos antes de navegar
-        Future.delayed(const Duration(milliseconds: 100), () {
-          Get.toNamed('/analysis-results');
-        });
-      },
-      child: const Text('Ver Detalles'),
-    ),
-    cancel: TextButton(
-      onPressed: () => Get.back(),
-      child: const Text('Cerrar'),
-    ),
-  );
-}
+      confirm: TextButton(
+        onPressed: () {
+          Get.back(); // Cerrar el diálogo
+          // Asegurarse de que los datos están listos antes de navegar
+          Future.delayed(const Duration(milliseconds: 100), () {
+            Get.toNamed('/analysis-results');
+          });
+        },
+        child: const Text('Ver Detalles'),
+      ),
+      cancel: TextButton(
+        onPressed: () => Get.back(),
+        child: const Text('Cerrar'),
+      ),
+    );
+  }
 
   // Cargar historial de videos
   Future<void> loadVideoHistory() async {
@@ -308,15 +337,15 @@ void _showAnalysisResults() {
     try {
       isLoading.value = true;
       currentStatus.value = 'Cargando análisis...';
-      
+
       final videoModel = await _storageService.loadVideoAnalysis(videoId);
-      
+
       if (videoModel != null) {
         currentVideoModel.value = videoModel;
         selectedVideo.value = File(videoModel.path);
         currentDetections.value = videoModel.detections;
         detectedBehaviors.value = videoModel.behaviors;
-        
+
         currentStatus.value = 'Análisis cargado';
       } else {
         Get.snackbar(
@@ -337,7 +366,7 @@ void _showAnalysisResults() {
     try {
       await _storageService.deleteVideo(videoId);
       await loadVideoHistory();
-      
+
       Get.snackbar(
         'Éxito',
         'Video eliminado correctamente',
@@ -357,9 +386,9 @@ void _showAnalysisResults() {
     try {
       isLoading.value = true;
       currentStatus.value = 'Exportando datos...';
-      
+
       final file = await _storageService.exportData();
-      
+
       Get.snackbar(
         'Éxito',
         'Datos exportados a: ${file.path}',

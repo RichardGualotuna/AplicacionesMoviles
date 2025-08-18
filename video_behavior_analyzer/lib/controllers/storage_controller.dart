@@ -5,10 +5,11 @@ import '../services/local_storage_service.dart';
 import 'package:flutter/material.dart';
 
 class StorageController extends GetxController {
-  late final LocalStorageService _storageService;
+  LocalStorageService? _storageService;
   
   // Estados observables
   final RxBool isLoading = false.obs;
+  final RxBool isInitialized = false.obs;
   final RxInt totalVideos = 0.obs;
   final RxInt totalAnalyses = 0.obs;
   final RxInt storageUsedBytes = 0.obs;
@@ -24,37 +25,68 @@ class StorageController extends GetxController {
   final RxInt cacheSize = 0.obs;
   
   @override
-  void onInit() async {
+  void onInit() {
     super.onInit();
-    await _initialize();
-    await updateStorageInfo();
+    _initialize();
   }
 
   Future<void> _initialize() async {
-    _storageService = await LocalStorageService.getInstance();
-    _loadStorageSettings();
+    try {
+      isLoading.value = true;
+      
+      // Inicializar servicio de almacenamiento
+      _storageService = await LocalStorageService.getInstance();
+      
+      // Cargar configuración
+      _loadStorageSettings();
+      
+      // Actualizar información
+      await updateStorageInfo();
+      
+      isInitialized.value = true;
+      
+    } catch (e) {
+      print('Error initializing StorageController: $e');
+      Get.snackbar(
+        'Error',
+        'No se pudo inicializar el almacenamiento',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   void _loadStorageSettings() {
-    final settings = _storageService.loadSettings();
-    autoDeleteOldVideos.value = settings['auto_delete_old'] ?? false;
-    maxStorageDays.value = settings['max_storage_days'] ?? 30;
-    maxStorageSizeMB.value = settings['max_storage_size_mb'] ?? 1000;
+    if (_storageService == null) return;
+    
+    try {
+      final settings = _storageService!.loadSettings();
+      autoDeleteOldVideos.value = settings['auto_delete_old'] ?? false;
+      maxStorageDays.value = settings['max_storage_days'] ?? 30;
+      maxStorageSizeMB.value = settings['max_storage_size_mb'] ?? 1000;
+    } catch (e) {
+      print('Error loading storage settings: $e');
+    }
   }
 
   // Actualizar información de almacenamiento
   Future<void> updateStorageInfo() async {
+    if (_storageService == null) return;
+    
     try {
       isLoading.value = true;
       
       // Obtener estadísticas
-      final stats = await _storageService.getStatistics();
+      final stats = await _storageService!.getStatistics();
       totalVideos.value = stats['total_videos'] ?? 0;
       totalAnalyses.value = stats['total_videos'] ?? 0; // Same as videos
       storageUsedBytes.value = stats['storage_used'] ?? 0;
       
       // Obtener espacio disponible
-      availableSpaceBytes.value = await _storageService.getAvailableSpace();
+      availableSpaceBytes.value = await _storageService!.getAvailableSpace();
       
       // Calcular porcentaje usado
       if (availableSpaceBytes.value > 0) {
@@ -74,16 +106,25 @@ class StorageController extends GetxController {
 
   // Limpiar videos antiguos
   Future<void> cleanOldVideos() async {
+    if (_storageService == null) {
+      Get.snackbar(
+        'Error',
+        'Servicio de almacenamiento no disponible',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    
     try {
       isLoading.value = true;
       
-      final videos = await _storageService.getAllAnalyses();
+      final videos = await _storageService!.getAllAnalyses();
       final cutoffDate = DateTime.now().subtract(Duration(days: maxStorageDays.value));
       
       int deletedCount = 0;
       for (var video in videos) {
         if (video.timestamp.isBefore(cutoffDate)) {
-          await _storageService.deleteVideo(video.id);
+          await _storageService!.deleteVideo(video.id);
           deletedCount++;
         }
       }
@@ -109,6 +150,15 @@ class StorageController extends GetxController {
 
   // Limpiar por tamaño
   Future<void> cleanBySize() async {
+    if (_storageService == null) {
+      Get.snackbar(
+        'Error',
+        'Servicio de almacenamiento no disponible',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    
     try {
       isLoading.value = true;
       
@@ -123,7 +173,7 @@ class StorageController extends GetxController {
         return;
       }
       
-      final videos = await _storageService.getAllAnalyses();
+      final videos = await _storageService!.getAllAnalyses();
       // Ordenar por fecha (más antiguos primero)
       videos.sort((a, b) => a.timestamp.compareTo(b.timestamp));
       
@@ -138,7 +188,7 @@ class StorageController extends GetxController {
         if (await videoFile.exists()) {
           final fileSize = await videoFile.length();
           
-          await _storageService.deleteVideo(video.id);
+          await _storageService!.deleteVideo(video.id);
           currentSize -= fileSize;
           deletedCount++;
         }
@@ -165,10 +215,19 @@ class StorageController extends GetxController {
 
   // Limpiar caché
   Future<void> clearCache() async {
+    if (_storageService == null) {
+      Get.snackbar(
+        'Error',
+        'Servicio de almacenamiento no disponible',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    
     try {
       isLoading.value = true;
       
-      await _storageService.clearCache();
+      await _storageService!.clearCache();
       await _updateCacheSize();
       
       Get.snackbar(
@@ -209,10 +268,19 @@ class StorageController extends GetxController {
 
   // Exportar todos los datos
   Future<void> exportAllData() async {
+    if (_storageService == null) {
+      Get.snackbar(
+        'Error',
+        'Servicio de almacenamiento no disponible',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    
     try {
       isLoading.value = true;
       
-      final exportFile = await _storageService.exportData();
+      final exportFile = await _storageService!.exportData();
       
       Get.snackbar(
         'Éxito',
@@ -240,10 +308,19 @@ class StorageController extends GetxController {
 
   // Importar datos
   Future<void> importData(File file) async {
+    if (_storageService == null) {
+      Get.snackbar(
+        'Error',
+        'Servicio de almacenamiento no disponible',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    
     try {
       isLoading.value = true;
       
-      await _storageService.importData(file);
+      await _storageService!.importData(file);
       await updateStorageInfo();
       
       Get.snackbar(
@@ -265,7 +342,9 @@ class StorageController extends GetxController {
 
   // Guardar configuración de almacenamiento
   Future<void> saveStorageSettings() async {
-    await _storageService.saveSettings({
+    if (_storageService == null) return;
+    
+    await _storageService!.saveSettings({
       'auto_delete_old': autoDeleteOldVideos.value,
       'max_storage_days': maxStorageDays.value,
       'max_storage_size_mb': maxStorageSizeMB.value,
