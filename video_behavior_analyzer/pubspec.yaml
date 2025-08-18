@@ -42,12 +42,14 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.1
 
+
 flutter:
   uses-material-design: true  
   
-  # Assets para modelos y configuración
   assets:
     - assets/models/
+    - assets/models/ssd_mobilenet.tflite
+    - assets/models/coco_labels.txt
     - assets/icons/
     
 dependency_overrides:

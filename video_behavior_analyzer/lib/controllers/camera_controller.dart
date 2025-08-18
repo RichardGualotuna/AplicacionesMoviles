@@ -13,7 +13,7 @@ class CameraControllerX extends GetxController {
   CameraController? cameraController;
   final MLService _mlService = MLService.instance;
   final BehaviorDetectionService _behaviorService = BehaviorDetectionService();
-  
+
   // Estados observables
   final RxBool isInitialized = false.obs;
   final RxBool isRecording = false.obs;
@@ -21,20 +21,20 @@ class CameraControllerX extends GetxController {
   final RxBool isRealTimeAnalysis = false.obs;
   final Rx<FlashMode> flashMode = FlashMode.off.obs;
   final RxInt selectedCameraIndex = 0.obs;
-  
+
   // Detecciones en tiempo real
   final RxList<DetectionModel> liveDetections = <DetectionModel>[].obs;
   final RxList<BehaviorModel> liveBehaviors = <BehaviorModel>[].obs;
-  
+
   // Configuración
   final RxDouble detectionFPS = 5.0.obs; // Frames por segundo para análisis
   final RxBool showBoundingBoxes = true.obs;
   final RxBool enableAudioAlerts = true.obs;
-  
+
   List<CameraDescription> cameras = [];
   String? recordingPath;
   DateTime? lastFrameTime;
-  
+
   @override
   void onInit() async {
     super.onInit();
@@ -46,7 +46,7 @@ class CameraControllerX extends GetxController {
   Future<void> initializeCameras() async {
     try {
       cameras = await availableCameras();
-      
+
       if (cameras.isEmpty) {
         Get.snackbar(
           'Error',
@@ -55,7 +55,7 @@ class CameraControllerX extends GetxController {
         );
         return;
       }
-      
+
       await initializeCamera(selectedCameraIndex.value);
     } catch (e) {
       print('Error initializing cameras: $e');
@@ -69,34 +69,33 @@ class CameraControllerX extends GetxController {
 
   Future<void> initializeCamera(int cameraIndex) async {
     if (cameraIndex >= cameras.length) return;
-    
+
     try {
       // Dispose del controller anterior si existe
       if (cameraController != null) {
         await cameraController!.dispose();
       }
-      
+
       selectedCameraIndex.value = cameraIndex;
-      
+
       cameraController = CameraController(
         cameras[cameraIndex],
         ResolutionPreset.high,
         enableAudio: true,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );
-      
+
       await cameraController!.initialize();
-      
+
       // Configurar flash
       await cameraController!.setFlashMode(flashMode.value);
-      
+
       isInitialized.value = true;
-      
+
       // Iniciar análisis en tiempo real si está habilitado
       if (isRealTimeAnalysis.value) {
         startRealTimeAnalysis();
       }
-      
     } catch (e) {
       print('Error initializing camera: $e');
       isInitialized.value = false;
@@ -111,7 +110,7 @@ class CameraControllerX extends GetxController {
   // Cambiar entre cámaras
   Future<void> switchCamera() async {
     if (cameras.length <= 1) return;
-    
+
     final newIndex = (selectedCameraIndex.value + 1) % cameras.length;
     await initializeCamera(newIndex);
   }
@@ -119,11 +118,16 @@ class CameraControllerX extends GetxController {
   // Cambiar modo de flash
   Future<void> toggleFlash() async {
     if (cameraController == null) return;
-    
-    final modes = [FlashMode.off, FlashMode.auto, FlashMode.always, FlashMode.torch];
+
+    final modes = [
+      FlashMode.off,
+      FlashMode.auto,
+      FlashMode.always,
+      FlashMode.torch
+    ];
     final currentIndex = modes.indexOf(flashMode.value);
     final newMode = modes[(currentIndex + 1) % modes.length];
-    
+
     try {
       await cameraController!.setFlashMode(newMode);
       flashMode.value = newMode;
@@ -137,24 +141,23 @@ class CameraControllerX extends GetxController {
     if (cameraController == null || !cameraController!.value.isInitialized) {
       return;
     }
-    
+
     if (isRecording.value) return;
-    
+
     try {
       final directory = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       recordingPath = '${directory.path}/video_$timestamp.mp4';
-      
+
       await cameraController!.startVideoRecording();
       isRecording.value = true;
-      
+
       Get.snackbar(
         'Grabación',
         'Grabación iniciada',
         snackPosition: SnackPosition.TOP,
         duration: const Duration(seconds: 2),
       );
-      
     } catch (e) {
       print('Error starting recording: $e');
       Get.snackbar(
@@ -170,22 +173,21 @@ class CameraControllerX extends GetxController {
     if (cameraController == null || !isRecording.value) {
       return null;
     }
-    
+
     try {
       final video = await cameraController!.stopVideoRecording();
       isRecording.value = false;
-      
+
       final videoFile = File(video.path);
-      
+
       Get.snackbar(
         'Grabación',
         'Video guardado exitosamente',
         snackPosition: SnackPosition.TOP,
         duration: const Duration(seconds: 2),
       );
-      
+
       return videoFile;
-      
     } catch (e) {
       print('Error stopping recording: $e');
       Get.snackbar(
@@ -202,7 +204,7 @@ class CameraControllerX extends GetxController {
     if (cameraController == null || !cameraController!.value.isInitialized) {
       return null;
     }
-    
+
     if (isRecording.value) {
       Get.snackbar(
         'Atención',
@@ -211,7 +213,7 @@ class CameraControllerX extends GetxController {
       );
       return null;
     }
-    
+
     try {
       final image = await cameraController!.takePicture();
       return File(image.path);
@@ -231,7 +233,7 @@ class CameraControllerX extends GetxController {
     if (cameraController == null || !cameraController!.value.isInitialized) {
       return;
     }
-    
+
     isRealTimeAnalysis.value = true;
     _processFrames();
   }
@@ -246,33 +248,49 @@ class CameraControllerX extends GetxController {
     if (!isRealTimeAnalysis.value || cameraController == null) {
       return;
     }
-    
+
     final now = DateTime.now();
     if (lastFrameTime != null) {
       final elapsed = now.difference(lastFrameTime!).inMilliseconds;
       final targetInterval = 1000 / detectionFPS.value;
-      
+
       if (elapsed < targetInterval) {
         await Future.delayed(
           Duration(milliseconds: (targetInterval - elapsed).toInt()),
         );
       }
     }
-    
+
     if (!isRealTimeAnalysis.value) return;
-    
+
     try {
       isProcessing.value = true;
       lastFrameTime = DateTime.now();
-      
+
+      // Usar el stream de imágenes de la cámara en lugar de tomar fotos
+      if (cameraController!.value.isStreamingImages) {
+        // Ya estamos procesando
+        return;
+      }
+
+      // Tomar una foto para análisis
       final image = await cameraController!.takePicture();
+
+      // Leer bytes de la imagen
       final imageBytes = await image.readAsBytes();
-      
+
+      // Detectar objetos
       final detections = await _mlService.detectObjects(imageBytes);
-      liveDetections.value = detections;
-      
-      final personDetections = detections.where((d) => d.label == 'person').toList();
-      
+
+      // Actualizar detecciones solo si hay resultados válidos
+      if (detections.isNotEmpty) {
+        liveDetections.value = detections;
+      }
+
+      // Analizar comportamientos
+      final personDetections =
+          detections.where((d) => d.label == 'person').toList();
+
       if (personDetections.isNotEmpty) {
         final behavior = await _behaviorService.analyzeFrame(
           imageBytes,
@@ -280,32 +298,40 @@ class CameraControllerX extends GetxController {
           {},
           0,
         );
-        
+
         if (behavior != null && behavior.type != BehaviorType.normal) {
           liveBehaviors.add(behavior);
-          
+
           if (liveBehaviors.length > 10) {
             liveBehaviors.removeAt(0);
           }
-          
-          if (enableAudioAlerts.value && 
-              (behavior.severity == SeverityLevel.high || 
-               behavior.severity == SeverityLevel.critical)) {
+
+          if (enableAudioAlerts.value &&
+              (behavior.severity == SeverityLevel.high ||
+                  behavior.severity == SeverityLevel.critical)) {
             _playAlert(behavior.type);
           }
         }
       }
-      
+
       // Limpiar imagen temporal
-      final file = File(image.path);
-      await file.delete();
-      
+      try {
+        final file = File(image.path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Ignorar errores de limpieza
+      }
     } catch (e) {
       print('Error processing frame: $e');
     } finally {
       isProcessing.value = false;
-      
+
+      // Continuar procesando si está activo
       if (isRealTimeAnalysis.value) {
+        // Pequeño delay para no saturar
+        await Future.delayed(const Duration(milliseconds: 100));
         _processFrames();
       }
     }
@@ -315,7 +341,7 @@ class CameraControllerX extends GetxController {
     // Implementar reproducción de audio según el tipo de comportamiento
     // Por ahora solo mostramos notificación
     String message = '';
-    
+
     switch (type) {
       case BehaviorType.violence:
         message = '⚠️ Violencia detectada';
@@ -332,7 +358,7 @@ class CameraControllerX extends GetxController {
       default:
         return;
     }
-    
+
     Get.snackbar(
       'Alerta',
       message,
@@ -346,7 +372,7 @@ class CameraControllerX extends GetxController {
   // Zoom
   Future<void> setZoomLevel(double zoom) async {
     if (cameraController == null) return;
-    
+
     try {
       await cameraController!.setZoomLevel(zoom);
     } catch (e) {
@@ -359,7 +385,7 @@ class CameraControllerX extends GetxController {
     if (cameraController == null) {
       return {'min': 1.0, 'max': 1.0};
     }
-    
+
     try {
       final min = await cameraController!.getMinZoomLevel();
       final max = await cameraController!.getMaxZoomLevel();
