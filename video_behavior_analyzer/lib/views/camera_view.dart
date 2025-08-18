@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:get/get.dart';
 import '../controllers/camera_controller.dart';
-import '../widgets/detection_overlay_widget.dart';
+import '../widgets/camera_overlay.dart';
 import '../widgets/behavior_alert_widget.dart';
 import '../controllers/video_controller.dart';
 
@@ -65,24 +65,30 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
          }
 
          return Stack(
-           children: [
-             // Camera Preview
-             Center(
-               child: AspectRatio(
-                 aspectRatio: cameraController.cameraController!.value.aspectRatio,
-                 child: CameraPreview(cameraController.cameraController!),
-               ),
-             ),
+  children: [
+    // Camera Preview
+    Center(
+      child: AspectRatio(
+        aspectRatio: cameraController.cameraController!.value.aspectRatio,
+        child: CameraPreview(cameraController.cameraController!),
+      ),
+    ),
 
-             // Detection Overlay
-             if (cameraController.isRealTimeAnalysis.value &&
-                 cameraController.showBoundingBoxes.value)
-               Positioned.fill(
-                 child: DetectionOverlayWidget(
-                   detections: cameraController.liveDetections,
-                   aspectRatio: cameraController.cameraController!.value.aspectRatio,
-                 ),
-               ),
+    // Detection Overlay - MEJORADO
+    if (cameraController.isRealTimeAnalysis.value &&
+        cameraController.showBoundingBoxes.value)
+      Positioned.fill(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Obx(() => CameraOverlay(
+              detections: cameraController.liveDetections,
+              previewSize: Size(constraints.maxWidth, constraints.maxHeight),
+            ));
+          },
+        ),
+      ),
+
+    // Resto del código...
 
              // Top Controls
              Positioned(
